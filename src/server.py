@@ -2,7 +2,13 @@ from flask import Flask
 from jinja2 import Markup, Environment, FileSystemLoader
 from pyecharts.globals import CurrentConfig
 
+import math # isnan
+
 import pandas as pd
+
+from pyecharts import options as opts
+from pyecharts.charts import Pie
+from pyecharts.faker import Faker
 
 # 关于 CurrentConfig，可参考 [基本使用-全局变量]
 CurrentConfig.GLOBAL_ENV = Environment(loader=FileSystemLoader("templates"))
@@ -13,30 +19,89 @@ from pyecharts.charts import Bar
 
 app = Flask(__name__, static_folder="templates")
 
-data = pd.read_excel('data/data.xlsx', sheet_name=0, skiprows=1)
+  
 
-# 岗位类别
-leibies = {}
-for x in data.index:
-    item = data.loc[x]
-    if item['地点'] == '山西太原':
-        leibie = item['岗位类别']
-        count = item['招考数量']
-        if leibies.get(leibie) == None:
-            leibies[leibie] = count
+# 主数据结构
+class LPData(object):
+    """docstring for LPData"""
+    def __init__(self, arg):
+        super(LPData, self).__init__()
+        self.arg = arg
+        self.dataframe = pd.read_excel('data/data.xlsx', sheet_name=0, skiprows=1)
 
-        t = leibies[leibie]
-        tt = int(t + count)
-        leibies[leibie] = tt
+    # 获取所有的列名
+    def columns(self):
+        self.dataframe.columns = ['id', 'sid', 'employer', 'job_catelog', 'job_name', 
+        'job_desc', 'hdc', 'ratio', 'source', 'academic',
+        'degree', 'major', 'subjects', 'others', 'city', 'tel']
 
-x = list(leibies.keys())
-y = list(leibies.values())
+        return self.dataframe.columns
 
-if type(y) is list:
-    print("YES y")
-else:
-    print("NO y")
+    # 获取指定城市的所有数据
+    def city(self, city):
+        dt = {}
+        for x in self.dataframe.index:
+            item = self.dataframe.loc[x]
+            if item['city'] == city:
+                return item
 
+        return None
+    
+    # 招聘的城市
+    def citys(self):
+        if self.citys == None:
+            self.citys = self.dataframe['city'].unique()
+        
+        return self.citys
+
+    # 所有的用人单位
+    def employers(self):
+        return self.dataframe['employer'].unique()
+
+    # 岗位类别
+    def job_catelog(self):
+        return self.dataframe['job_catelog'].unique()
+
+    # 所有的岗位名称
+    def job_name(self):
+        return self.dataframe['job_name'].unique()
+
+dt = LPData(0)
+columns = dt.columns()
+print('所有的列名: ', columns)
+
+# city = '北京'
+# rows = dt.city(city)
+# print(city, rows)
+
+print('所有的城市 : ', len(dt.dataframe['city'].unique()))
+# print('所有的单位名称 : ', len(dt.employers()))
+# print('所有的岗位类别名称 : ', dt.job_catelog())
+# print('所有的岗位名称 : ', dt.job_name())
+
+
+# 所有城市的招聘人数饼图
+city_and_hds = {}
+for city in list(dt.dataframe['city'].unique()):
+    if False == isinstance(city, str):
+        continue
+
+    # print(city)
+    print('row: ', city, ":", dt.dataframe.loc[dt.dataframe['city'] == city].loc[:, 'hdc'].sum())
+    city_and_hds[city] = int(dt.dataframe.loc[dt.dataframe['city'] == city].loc[:, 'hdc'].sum())
+    
+# print('idx: ', idx, city_and_hds)
+
+def pie() -> Pie:
+    c = (
+        Pie()
+        .add("城市统计图", [list(z) for z in zip(city_and_hds.keys(), city_and_hds.values())])
+        # .set_colors(["blue", "green", "yellow", "red", "pink", "orange", "purple"])
+        # .set_global_opts(title_opts=opts.TitleOpts(title="Pie图"))
+        # .set_series_opts(label_opts=opts.LabelOpts(formatter="{b}: {c}"))
+    )
+
+    return c
 
 def bar_base() -> Bar:
     c = (
@@ -50,7 +115,8 @@ def bar_base() -> Bar:
 
 @app.route("/")
 def index():
-    c = bar_base()
+    # c = bar_base()
+    c = pie()
     return Markup(c.render_embed())
 
 
