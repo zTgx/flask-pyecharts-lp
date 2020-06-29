@@ -2,24 +2,16 @@ from flask import Flask
 from jinja2 import Markup, Environment, FileSystemLoader
 from pyecharts.globals import CurrentConfig
 
-import math # isnan
-
 import pandas as pd
 
 from pyecharts import options as opts
 from pyecharts.charts import Pie
-from pyecharts.faker import Faker
+from pyecharts.charts import Bar
 
 # 关于 CurrentConfig，可参考 [基本使用-全局变量]
 CurrentConfig.GLOBAL_ENV = Environment(loader=FileSystemLoader("templates"))
 
-from pyecharts import options as opts
-from pyecharts.charts import Bar
-
-
 app = Flask(__name__, static_folder="templates")
-
-  
 
 # 主数据结构
 class LPData(object):
@@ -29,24 +21,9 @@ class LPData(object):
         self.arg = arg
         self.dataframe = pd.read_excel('data/data.xlsx', sheet_name=0, skiprows=1)
 
-    # 获取所有的列名
-    def columns(self):
-        self.dataframe.columns = ['id', 'sid', 'employer', 'job_catelog', 'job_name', 
-        'job_desc', 'hdc', 'ratio', 'source', 'academic',
-        'degree', 'major', 'subjects', 'others', 'city', 'tel']
+        self.dataframe.columns = ['id', 'sid', 'employer', 'job_catelog', 'job_name', 'job_desc', 
+        'hdc', 'ratio', 'source', 'academic','degree', 'major', 'subjects', 'others', 'city', 'tel']
 
-        return self.dataframe.columns
-
-    # 获取指定城市的所有数据
-    def city(self, city):
-        dt = {}
-        for x in self.dataframe.index:
-            item = self.dataframe.loc[x]
-            if item['city'] == city:
-                return item
-
-        return None
-    
     # 招聘的城市
     def citys(self):
         if self.citys == None:
@@ -67,18 +44,6 @@ class LPData(object):
         return self.dataframe['job_name'].unique()
 
 dt = LPData(0)
-columns = dt.columns()
-print('所有的列名: ', columns)
-
-# city = '北京'
-# rows = dt.city(city)
-# print(city, rows)
-
-print('所有的城市 : ', len(dt.dataframe['city'].unique()))
-# print('所有的单位名称 : ', len(dt.employers()))
-# print('所有的岗位类别名称 : ', dt.job_catelog())
-# print('所有的岗位名称 : ', dt.job_name())
-
 
 # 所有城市的招聘人数饼图
 city_and_hds = {}
@@ -87,11 +52,8 @@ for city in list(dt.dataframe['city'].unique()):
         continue
 
     # print(city)
-    print('row: ', city, ":", dt.dataframe.loc[dt.dataframe['city'] == city].loc[:, 'hdc'].sum())
     city_and_hds[city] = int(dt.dataframe.loc[dt.dataframe['city'] == city].loc[:, 'hdc'].sum())
     
-# print('idx: ', idx, city_and_hds)
-
 def pie() -> Pie:
     c = (
         Pie()
